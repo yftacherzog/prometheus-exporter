@@ -80,9 +80,19 @@ func (collector *fooCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func main() {
-	foo := newFooCollector()
-	prometheus.MustRegister(foo)
+	reg := prometheus.NewPedanticRegistry()
 
-	http.Handle("/console/metrics", promhttp.Handler())
+	foo := newFooCollector()
+	reg.MustRegister(foo)
+
+	http.Handle("/metrics", promhttp.HandlerFor(
+		reg,
+		promhttp.HandlerOpts{
+			// Opt into OpenMetrics to support exemplars.
+			EnableOpenMetrics: true,
+			// Pass custom registry
+			Registry: reg,
+		},
+	))
 	log.Fatal(http.ListenAndServe(":9101", nil))
 }
